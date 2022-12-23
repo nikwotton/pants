@@ -1,8 +1,12 @@
 [GLOBAL]
 colors = true
 
+remote_execution = true
 remote_cache_read = true
 remote_cache_write = true
+
+remote_execution_append_only_caches_base_path = "/toolchain/caches"
+process_execution_remote_parallelism = 16
 
 [test]
 use_coverage = true

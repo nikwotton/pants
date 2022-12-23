@@ -19,5 +19,8 @@ docker_environment(
 # for internal testing.
 remote_environment(
     name="buildgrid_remote",
+    fallback_environment="__local__",
     python_bootstrap_search_path=["<PATH>"],
 )
+
+__defaults__(all={"environment": "remote"})
