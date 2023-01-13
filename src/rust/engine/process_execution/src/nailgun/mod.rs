@@ -91,6 +91,7 @@ pub struct CommandRunner {
   executor: Executor,
   named_caches: NamedCaches,
   immutable_inputs: ImmutableInputs,
+  persist_inputs: bool,
 }
 
 impl CommandRunner {
@@ -101,6 +102,7 @@ impl CommandRunner {
     named_caches: NamedCaches,
     immutable_inputs: ImmutableInputs,
     nailgun_pool_size: usize,
+    persist_inputs: bool,
   ) -> Self {
     CommandRunner {
       nailgun_pool: NailgunPool::new(
@@ -113,6 +115,7 @@ impl CommandRunner {
       executor,
       named_caches,
       immutable_inputs,
+      persist_inputs,
     }
   }
 
@@ -179,16 +182,16 @@ impl super::CommandRunner for CommandRunner {
           .map_err(|e| e.enrich("Failed to connect to nailgun"))?;
 
         // Prepare the workdir.
-        let exclusive_spawn = prepare_workdir(
+        let _exclusive_spawn = prepare_workdir(
           nailgun_process.workdir_path().to_owned(),
           &client_req,
-          client_req.input_digests.input_files.clone(),
           self.store.clone(),
           self.executor.clone(),
           &self.named_caches,
           &self.immutable_inputs,
           None,
           None,
+          self.persist_inputs,
         )
         .await?;
 
@@ -200,7 +203,9 @@ impl super::CommandRunner for CommandRunner {
             self.executor.clone(),
             nailgun_process.workdir_path().to_owned(),
             (nailgun_process.name().to_owned(), nailgun_process.address()),
-            exclusive_spawn,
+            // NB: It is never necessary to use exclusive_spawn in the context of nailgun, because
+            // no child processes are spawned.
+            false,
             Platform::current().unwrap(),
           )
           .await;

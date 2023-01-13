@@ -389,6 +389,11 @@ impl Store {
     })
   }
 
+  /// True if this Store has an associated remote store.
+  pub fn has_remote(&self) -> bool {
+    self.remote.is_some()
+  }
+
   // This default suffix is also hard-coded into the Python options code in global_options.py
   pub fn default_path() -> PathBuf {
     default_cache_path().join("lmdb_store")
@@ -690,9 +695,6 @@ impl Store {
 
   ///
   /// Ensures that the directory entries of the given DirectoryDigest is persisted to disk.
-  ///
-  /// TODO: By the end of #13112, usage of this method should be limited to the writing of cache
-  /// entries.
   ///
   pub async fn ensure_directory_digest_persisted(
     &self,

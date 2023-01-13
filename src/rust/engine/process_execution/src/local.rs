@@ -17,8 +17,8 @@ use std::time::Instant;
 use async_trait::async_trait;
 use bytes::{Bytes, BytesMut};
 use fs::{
-  self, DirectoryDigest, GlobExpansionConjunction, GlobMatching, PathGlobs, Permissions,
-  RelativePath, StrictGlobMatching, EMPTY_DIRECTORY_DIGEST,
+  self, GlobExpansionConjunction, GlobMatching, PathGlobs, Permissions, RelativePath,
+  StrictGlobMatching, EMPTY_DIRECTORY_DIGEST,
 };
 use futures::stream::{BoxStream, StreamExt, TryStreamExt};
 use futures::{try_join, FutureExt, TryFutureExt};
@@ -56,6 +56,7 @@ pub struct CommandRunner {
   named_caches: NamedCaches,
   immutable_inputs: ImmutableInputs,
   keep_sandboxes: KeepSandboxes,
+  persist_inputs: bool,
   platform: Platform,
   spawn_lock: RwLock<()>,
 }
@@ -68,6 +69,7 @@ impl CommandRunner {
     named_caches: NamedCaches,
     immutable_inputs: ImmutableInputs,
     keep_sandboxes: KeepSandboxes,
+    persist_inputs: bool,
   ) -> CommandRunner {
     CommandRunner {
       store,
@@ -76,6 +78,7 @@ impl CommandRunner {
       named_caches,
       immutable_inputs,
       keep_sandboxes,
+      persist_inputs,
       platform: Platform::current().unwrap(),
       spawn_lock: RwLock::new(()),
     }
@@ -277,13 +280,13 @@ impl super::CommandRunner for CommandRunner {
         let exclusive_spawn = prepare_workdir(
           workdir.path().to_owned(),
           &req,
-          req.input_digests.input_files.clone(),
           self.store.clone(),
           self.executor.clone(),
           &self.named_caches,
           &self.immutable_inputs,
           None,
           None,
+          self.persist_inputs,
         )
         .await?;
 
@@ -630,14 +633,32 @@ pub fn apply_chroot(chroot_path: &str, req: &mut Process) {
 pub async fn prepare_workdir(
   workdir_path: PathBuf,
   req: &Process,
-  materialized_input_digest: DirectoryDigest,
   store: Store,
   executor: Executor,
   named_caches: &NamedCaches,
   immutable_inputs: &ImmutableInputs,
   named_caches_prefix: Option<&Path>,
   immutable_inputs_prefix: Option<&Path>,
+  persist_inputs: bool,
 ) -> Result<bool, StoreError> {
+  // Optionally ensure that the process inputs have been persisted.
+  if persist_inputs {
+    let complete_inputs = req.input_digests.complete.clone();
+    let store = store.clone();
+    let _ = executor.spawn(async move {
+      let complete_inputs_digest = complete_inputs.as_digest();
+      store
+        .ensure_directory_digest_persisted(complete_inputs)
+        .await?;
+      if store.has_remote() {
+        store
+          .ensure_remote_has_recursive(vec![complete_inputs_digest])
+          .await?;
+      }
+      Ok::<(), StoreError>(())
+    });
+  }
+
   // Collect the symlinks to create for immutable inputs or named caches.
   let immutable_inputs_symlinks = {
     let symlinks = immutable_inputs
@@ -708,7 +729,7 @@ pub async fn prepare_workdir(
     store2
       .materialize_directory(
         workdir_path_2,
-        materialized_input_digest,
+        req.input_digests.input_files.clone(),
         Permissions::Writable,
       )
       .await

@@ -574,13 +574,14 @@ fn interactive_process(
       prepare_workdir(
         tempdir.path().to_owned(),
         &process,
-        process.input_digests.input_files.clone(),
         context.core.store(),
         context.core.executor.clone(),
         &context.core.named_caches,
         &context.core.immutable_inputs,
         None,
         None,
+        // TODO
+        true,
       )
       .await?;
       apply_chroot(tempdir.path().to_str().unwrap(), &mut process);

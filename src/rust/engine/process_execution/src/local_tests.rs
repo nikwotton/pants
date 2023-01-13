@@ -744,13 +744,13 @@ async fn prepare_workdir_exclusive_relative() {
   let exclusive_spawn = local::prepare_workdir(
     work_dir.path().to_owned(),
     &process,
-    TestDirectory::recursive().directory_digest(),
     store,
     executor,
     &named_caches,
     &immutable_inputs,
     None,
     None,
+    false,
   )
   .await
   .unwrap();
@@ -808,6 +808,7 @@ async fn run_command_locally_in_dir(
     named_caches,
     immutable_inputs,
     cleanup,
+    false,
   );
   let original = runner.run(Context::default(), workunit, req.into()).await?;
   let stdout_bytes = store

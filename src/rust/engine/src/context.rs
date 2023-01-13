@@ -201,6 +201,8 @@ impl Core {
       named_caches.clone(),
       immutable_inputs.clone(),
       exec_strategy_opts.local_keep_sandboxes,
+      // TODO
+      true,
     );
 
     let runner: Box<dyn CommandRunner> = if exec_strategy_opts.local_enable_nailgun {
@@ -224,6 +226,8 @@ impl Core {
         named_caches.clone(),
         immutable_inputs.clone(),
         pool_size,
+        // TODO
+        true,
       );
 
       Box::new(SwitchedCommandRunner::new(
@@ -246,6 +250,8 @@ impl Core {
       named_caches.clone(),
       immutable_inputs.clone(),
       exec_strategy_opts.local_keep_sandboxes,
+      // TODO
+      true,
     )?);
     let runner = Box::new(SwitchedCommandRunner::new(docker_runner, runner, |req| {
       matches!(req.execution_strategy, ProcessExecutionStrategy::Docker(_))

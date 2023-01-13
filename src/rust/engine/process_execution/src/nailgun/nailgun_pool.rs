@@ -369,13 +369,13 @@ impl NailgunProcess {
     prepare_workdir(
       workdir.path().to_owned(),
       &startup_options,
-      startup_options.input_digests.input_files.clone(),
       store.clone(),
       executor.clone(),
       named_caches,
       immutable_inputs,
       None,
       None,
+      false,
     )
     .await?;
     let workdir_include_names = list_workdir(workdir.path()).await?;

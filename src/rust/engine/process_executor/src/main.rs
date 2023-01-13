@@ -351,6 +351,8 @@ async fn main() {
       ),
       ImmutableInputs::new(store.clone(), &workdir).unwrap(),
       KeepSandboxes::Never,
+      // Because input digests came from the CLI, they must already be persisted.
+      false,
     )) as Box<dyn process_execution::CommandRunner>,
   };
 

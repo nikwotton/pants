@@ -744,6 +744,7 @@ async fn run_command_via_docker_in_dir(
     named_caches,
     immutable_inputs,
     cleanup,
+    false,
   )?;
   let result: Result<_, ProcessError> = async {
     let original = runner.run(Context::default(), workunit, req.into()).await?;

@@ -48,6 +48,7 @@ pub struct CommandRunner<'a> {
   named_caches: NamedCaches,
   immutable_inputs: ImmutableInputs,
   keep_sandboxes: KeepSandboxes,
+  persist_inputs: bool,
   container_cache: ContainerCache<'a>,
 }
 
@@ -295,6 +296,7 @@ impl<'a> CommandRunner<'a> {
     named_caches: NamedCaches,
     immutable_inputs: ImmutableInputs,
     keep_sandboxes: KeepSandboxes,
+    persist_inputs: bool,
   ) -> Result<Self, String> {
     let container_cache = ContainerCache::new(
       docker,
@@ -312,6 +314,7 @@ impl<'a> CommandRunner<'a> {
       named_caches,
       immutable_inputs,
       keep_sandboxes,
+      persist_inputs,
       container_cache,
     })
   }
@@ -376,16 +379,16 @@ impl<'a> super::CommandRunner for CommandRunner<'a> {
 
         // Prepare the workdir.
         // DOCKER-NOTE: The input root will be bind mounted into the container.
-        let exclusive_spawn = prepare_workdir(
+        let _exclusive_spawn = prepare_workdir(
           workdir.path().to_owned(),
           &req,
-          req.input_digests.input_files.clone(),
           self.store.clone(),
           self.executor.clone(),
           &self.named_caches,
           &self.immutable_inputs,
           Some(Path::new(NAMED_CACHES_BASE_PATH_IN_CONTAINER)),
           Some(Path::new(IMMUTABLE_INPUTS_BASE_PATH_IN_CONTAINER)),
+          self.persist_inputs,
         )
         .await?;
 
@@ -399,7 +402,9 @@ impl<'a> super::CommandRunner for CommandRunner<'a> {
             self.executor.clone(),
             workdir.path().to_owned(),
             sandbox_path_in_container,
-            exclusive_spawn,
+            // NB: It is never necessary to use exclusive_spawn in the context of Docker, because
+            // this process is not forking the child process: Docker is.
+            false,
             req.platform,
           )
           .map_err(|msg| {
