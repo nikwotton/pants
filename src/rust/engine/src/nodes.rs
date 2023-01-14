@@ -455,10 +455,9 @@ impl ExecuteProcess {
       .run(execution_context, workunit, request.clone())
       .await?;
 
-    let definition = serde_json::to_string(&request)
-      .map_err(|e| throw(format!("Failed to serialize process: {}", e)))?;
     workunit.update_metadata(|initial| {
       initial.map(|(initial, level)| {
+        let definition = serde_json::to_string(&request).unwrap();
         (
           WorkunitMetadata {
             stdout: Some(res.stdout_digest),

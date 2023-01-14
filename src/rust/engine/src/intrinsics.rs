@@ -36,7 +36,7 @@ use rule_graph::DependencyKey;
 use stdio::TryCloneAsFile;
 use store::{SnapshotOps, SubsetParams};
 
-use workunit_store::{in_workunit, Level};
+use workunit_store::{in_workunit, Level, UserMetadataItem, WorkunitMetadata};
 
 type IntrinsicFn =
   Box<dyn Fn(Context, Vec<Value>) -> BoxFuture<'static, NodeResult<Value>> + Send + Sync>;
@@ -517,7 +517,7 @@ fn interactive_process(
   in_workunit!(
     "interactive_process",
     Level::Debug,
-      |_workunit| async move {
+      |workunit| async move {
       let types = &context.core.types;
       let interactive_process_result = types.interactive_process_result;
 
@@ -543,6 +543,24 @@ fn interactive_process(
         let keep_sandboxes_value: &PyAny = externs::getattr(py_interactive_process, "keep_sandboxes").unwrap();
         let keep_sandboxes = KeepSandboxes::from_str(externs::getattr(keep_sandboxes_value, "value").unwrap()).unwrap();
         (run_in_workspace, restartable, keep_sandboxes)
+      });
+
+      workunit.update_metadata(|initial| {
+        initial.map(|(initial, level)| {
+          let definition = serde_json::to_string(&process).unwrap();
+          (
+            WorkunitMetadata {
+              user_metadata: vec![
+                (
+                  "definition".to_string(),
+                  UserMetadataItem::String(definition),
+                ),
+              ],
+              ..initial
+            },
+            level,
+          )
+        })
       });
 
       let session = context.session;
