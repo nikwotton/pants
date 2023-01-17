@@ -643,20 +643,21 @@ pub async fn prepare_workdir(
 ) -> Result<bool, StoreError> {
   // Optionally ensure that the process inputs have been persisted.
   if persist_inputs {
-    let complete_inputs = req.input_digests.complete.clone();
-    let store = store.clone();
-    let _ = executor.spawn(async move {
-      let complete_inputs_digest = complete_inputs.as_digest();
+    log::info!(
+      "Persisting {:?} as input for {}",
+      req.input_digests.complete,
+      req.description
+    );
+    let complete_inputs_digest = req.input_digests.complete.as_digest();
+    store
+      .ensure_directory_digest_persisted(req.input_digests.complete.clone())
+      .await?;
+    if store.has_remote() {
+      log::info!("Uploading {:?}", req.input_digests.complete);
       store
-        .ensure_directory_digest_persisted(complete_inputs)
+        .ensure_remote_has_recursive(vec![complete_inputs_digest])
         .await?;
-      if store.has_remote() {
-        store
-          .ensure_remote_has_recursive(vec![complete_inputs_digest])
-          .await?;
-      }
-      Ok::<(), StoreError>(())
-    });
+    }
   }
 
   // Collect the symlinks to create for immutable inputs or named caches.
